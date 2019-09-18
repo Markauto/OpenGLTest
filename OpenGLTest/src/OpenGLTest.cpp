@@ -6,53 +6,9 @@
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
 
-#include "Logger/ILogger.h"
-#include "Logger/Logger.h"
-#include "TimeHelper/TimeHelper.h"
-#include "StringFormater/StringFormater.h"
-
-#define ASSERT(x) if (!(x)) __debugbreak()
-#define GLCALL(x) GLClearError(); \
-    x;\
-    ASSERT(GLLogCall(#x, __FILE__, __LINE__));
-#ifdef DEBUG_LOGGING
-
-#define DEBUGLOG(x) TheLogger->Log(x)
- 
-#else
-
-#define DEBUGLOG(x) 
-
-#endif// LOGGER_ENABLED
-
-
-// TODO: Move setup into factory classes or summet
-std::unique_ptr<helpers::ILogger> TheLogger;
-std::unique_ptr<helpers::ITimeHelper> TheTimeHelper;
-
-void Setup()
-{
-    TheTimeHelper = std::make_unique<helpers::TimeHelper>();
-    TheLogger = std::make_unique<helpers::Logger>(TheTimeHelper.get());    
-}
-
-void GLClearError()
-{
-    while (glGetError() != GL_NO_ERROR);
-}
-
-
-bool GLLogCall(const char* function, const char* file, int line)
-{
-    bool noErrors = true;
-    while (GLenum error = glGetError())
-    {
-        TheLogger->Log(helpers::StringFormater::Format(
-            "[OpenGL Error] (%s): %s : %s : %s", error, function, file, line));
-        noErrors = false;
-    }
-    return noErrors;
-}
+#include "Renderer.h"
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
 
 std::tuple<std::string, std::string> ParseShader(const std::string& filepath)
 {
@@ -142,7 +98,11 @@ int main(void)
         return -1;
     }
 
-    window = glfwCreateWindow(800, 600, "Open GL Test", NULL, NULL);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    window = glfwCreateWindow(640, 480, "Open GL Test", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -159,80 +119,78 @@ int main(void)
     }
 
     DEBUGLOG(helpers::StringFormater::Format("OpenGL Version: %s", (const char*)glGetString(GL_VERSION)));
-    
-    float positions[] = {
-         -0.5f, -0.5f,
-          0.5f, -0.5f,
-          0.5f,  0.5f,
-         -0.5f,  0.5f
-    };
-
-    unsigned int indices[] = {
-        0, 1, 2,
-        2, 3, 0
-    };
-
-    unsigned int buffer;
-    GLCALL(glGenBuffers(1, &buffer));
-    GLCALL(glBindBuffer(GL_ARRAY_BUFFER, buffer));
-    GLCALL(glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float) , positions, GL_STATIC_DRAW));
-
-    GLCALL(glEnableVertexAttribArray(0));
-    GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 2, 0));
-
-    unsigned int indexBufferObject;
-    GLCALL(glGenBuffers(1, &indexBufferObject));
-    GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject));
-    GLCALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW));
-
-    auto [vertexShaderSource, fragmentShaderSource] = ParseShader("res/shaders/Basic.glsl");    
-    unsigned int shader = CreateShader(vertexShaderSource, fragmentShaderSource);
-    GLCALL(glUseProgram(shader));
-
-    GLCALL(int location = glGetUniformLocation(shader, "u_Color"));
-    ASSERT(location != -1);
-    GLCALL(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
-
-    GLCALL(glUseProgram(0));
-    GLCALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
-    GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-    
-
-    float redChannel = 0.0f;
-    float increment = 0.05f;
-    while (!glfwWindowShouldClose(window))
     {
-        GLCALL(glClear(GL_COLOR_BUFFER_BIT));
-        
-        GLCALL(glUseProgram(shader));
-        GLCALL(glUniform4f(location, redChannel, 0.3f, 0.8f, 1.0f));
 
-        GLCALL(glBindBuffer(GL_ARRAY_BUFFER, buffer));
+        float positions[] = {
+             -0.5f, -0.5f,
+              0.5f, -0.5f,
+              0.5f,  0.5f,
+             -0.5f,  0.5f
+        };
+
+        unsigned int indices[] = {
+            0, 1, 2,
+            2, 3, 0
+        };
+
+        unsigned int vertexArrayObject;
+        GLCALL(glGenVertexArrays(1, &vertexArrayObject));
+        GLCALL(glBindVertexArray(vertexArrayObject));
+
+        VertexBuffer vertexBuffer(positions, 4 * 2 * sizeof(float));
+
         GLCALL(glEnableVertexAttribArray(0));
-        GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 2, 0));
+        GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 2, 0)); //Links buffer with vertex array object
 
-        GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject));
+        IndexBuffer indexBuffer(indices, 6);
 
-        
-        GLCALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));        
+        auto [vertexShaderSource, fragmentShaderSource] = ParseShader("res/shaders/Basic.glsl");
+        unsigned int shader = CreateShader(vertexShaderSource, fragmentShaderSource);
+        GLCALL(glUseProgram(shader));
 
-        if (redChannel > 1.0f)
+        GLCALL(int location = glGetUniformLocation(shader, "u_Color"));
+        ASSERT(location != -1);
+        GLCALL(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
+
+        GLCALL(glBindVertexArray(0));
+        GLCALL(glUseProgram(0));
+        GLCALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+        GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+
+
+        float redChannel = 0.0f;
+        float increment = 0.05f;
+        while (!glfwWindowShouldClose(window))
         {
-            increment = -0.05f;
+            GLCALL(glClear(GL_COLOR_BUFFER_BIT));
+
+            GLCALL(glUseProgram(shader));
+            GLCALL(glUniform4f(location, redChannel, 0.3f, 0.8f, 1.0f));
+
+            GLCALL(glBindVertexArray(vertexArrayObject));
+
+            indexBuffer.Bind();
+
+            GLCALL(glDrawElements(GL_TRIANGLES, indexBuffer.GetCount(), GL_UNSIGNED_INT, nullptr));
+
+            if (redChannel > 1.0f)
+            {
+                increment = -0.05f;
+            }
+            else if (redChannel < 0.0f)
+            {
+                increment = 0.05f;
+            }
+
+            redChannel += increment;
+
+            GLCALL(glfwSwapBuffers(window));
+
+            GLCALL(glfwPollEvents());
         }
-        else if(redChannel < 0.0f)
-        {
-            increment = 0.05f;
-        }
 
-        redChannel += increment;
-
-        GLCALL(glfwSwapBuffers(window));
-
-        GLCALL(glfwPollEvents());
+        GLCALL(glDeleteProgram(shader));
     }
-
-    GLCALL(glDeleteProgram(shader));
 
     glfwTerminate();
     return 0;
