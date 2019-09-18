@@ -160,6 +160,7 @@
     <ClCompile Include="src\OpenGLTest.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\TimeHelper\TimeHelper.cpp" />
+    <ClCompile Include="src\VertexArray.cpp" />
     <ClCompile Include="src\VertexBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -170,7 +171,9 @@
     <ClInclude Include="src\StringFormater\StringFormater.h" />
     <ClInclude Include="src\TimeHelper\ITimeHelper.h" />
     <ClInclude Include="src\TimeHelper\TimeHelper.h" />
+    <ClInclude Include="src\VertexArray.h" />
     <ClInclude Include="src\VertexBuffer.h" />
+    <ClInclude Include="src\VertexBufferLayout.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.glsl" />

@@ -9,6 +9,7 @@
 #include "Renderer.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
+#include "VertexArray.h"
 
 std::tuple<std::string, std::string> ParseShader(const std::string& filepath)
 {
@@ -119,8 +120,8 @@ int main(void)
     }
 
     DEBUGLOG(helpers::StringFormater::Format("OpenGL Version: %s", (const char*)glGetString(GL_VERSION)));
-    {
 
+    {
         float positions[] = {
              -0.5f, -0.5f,
               0.5f, -0.5f,
@@ -132,15 +133,14 @@ int main(void)
             0, 1, 2,
             2, 3, 0
         };
-
-        unsigned int vertexArrayObject;
-        GLCALL(glGenVertexArrays(1, &vertexArrayObject));
-        GLCALL(glBindVertexArray(vertexArrayObject));
+        
+        VertexArray vertexArray;
 
         VertexBuffer vertexBuffer(positions, 4 * 2 * sizeof(float));
 
-        GLCALL(glEnableVertexAttribArray(0));
-        GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 2, 0)); //Links buffer with vertex array object
+        VertexBufferLayout layout;
+        layout.Push<float>(2);  
+        vertexArray.AddBuffer(vertexBuffer, layout);
 
         IndexBuffer indexBuffer(indices, 6);
 
@@ -152,12 +152,11 @@ int main(void)
         ASSERT(location != -1);
         GLCALL(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
 
-        GLCALL(glBindVertexArray(0));
+        vertexArray.Unbind();
         GLCALL(glUseProgram(0));
-        GLCALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
-        GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-
-
+        vertexBuffer.Unbind();
+        indexBuffer.Unbind();
+        
         float redChannel = 0.0f;
         float increment = 0.05f;
         while (!glfwWindowShouldClose(window))
@@ -167,7 +166,7 @@ int main(void)
             GLCALL(glUseProgram(shader));
             GLCALL(glUniform4f(location, redChannel, 0.3f, 0.8f, 1.0f));
 
-            GLCALL(glBindVertexArray(vertexArrayObject));
+            vertexArray.Bind();
 
             indexBuffer.Bind();
 
