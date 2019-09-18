@@ -11,6 +11,21 @@
 #include "TimeHelper/TimeHelper.h"
 #include "StringFormater/StringFormater.h"
 
+#define ASSERT(x) if (!(x)) __debugbreak()
+#define GLCALL(x) GLClearError(); \
+    x;\
+    ASSERT(GLLogCall(#x, __FILE__, __LINE__));
+#ifdef DEBUG_LOGGING
+
+#define DEBUGLOG(x) TheLogger->Log(x)
+ 
+#else
+
+#define DEBUGLOG(x) 
+
+#endif// LOGGER_ENABLED
+
+
 // TODO: Move setup into factory classes or summet
 std::unique_ptr<helpers::ILogger> TheLogger;
 std::unique_ptr<helpers::ITimeHelper> TheTimeHelper;
@@ -19,6 +34,24 @@ void Setup()
 {
     TheTimeHelper = std::make_unique<helpers::TimeHelper>();
     TheLogger = std::make_unique<helpers::Logger>(TheTimeHelper.get());    
+}
+
+void GLClearError()
+{
+    while (glGetError() != GL_NO_ERROR);
+}
+
+
+bool GLLogCall(const char* function, const char* file, int line)
+{
+    bool noErrors = true;
+    while (GLenum error = glGetError())
+    {
+        TheLogger->Log(helpers::StringFormater::Format(
+            "[OpenGL Error] (%s): %s : %s : %s", error, function, file, line));
+        noErrors = false;
+    }
+    return noErrors;
 }
 
 std::tuple<std::string, std::string> ParseShader(const std::string& filepath)
@@ -57,21 +90,24 @@ std::tuple<std::string, std::string> ParseShader(const std::string& filepath)
 
 unsigned int CompileShader(unsigned int type, const std::string& source)
 {
-    unsigned int id = glCreateShader(type);
+    GLCALL(unsigned int id = glCreateShader(type));
     const char* src = source.c_str();
-    glShaderSource(id, 1, &src, nullptr);
-    glCompileShader(id);
+    GLCALL(glShaderSource(id, 1, &src, nullptr));
+    GLCALL(glCompileShader(id));
 
     int result;
     glGetShaderiv(id, GL_COMPILE_STATUS, &result);
     if (result == GL_FALSE)
     {
         int length;
-        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
-        char* message = (char *)alloca(length * sizeof(char));
-        glGetShaderInfoLog(id, length, &length, message);
-        TheLogger->Log(helpers::StringFormater::Format("Failed to compile %s shader :( \n %s", (type == GL_VERTEX_SHADER ? "vertex" : "fragment"), message));
-        glDeleteShader(id);
+        GLCALL(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
+        GLCALL(char* message = (char *)alloca(length * sizeof(char)));
+        GLCALL(glGetShaderInfoLog(id, length, &length, message));
+        TheLogger->Log(helpers::StringFormater::Format(
+            "Failed to compile %s shader :( \n %s", 
+            (type == GL_VERTEX_SHADER ? "vertex" : "fragment"), 
+            message));
+        GLCALL(glDeleteShader(id));
         return 0;
     }
 
@@ -80,17 +116,17 @@ unsigned int CompileShader(unsigned int type, const std::string& source)
 
 unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
 {
-    unsigned int program = glCreateProgram();
+    GLCALL(unsigned int program = glCreateProgram());
     unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
     unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-    glValidateProgram(program);
+    GLCALL(glAttachShader(program, vs));
+    GLCALL(glAttachShader(program, fs));
+    GLCALL(glLinkProgram(program));
+    GLCALL(glValidateProgram(program));
 
-    glDeleteShader(vs);
-    glDeleteShader(fs);
+    GLCALL(glDeleteShader(vs));
+    GLCALL(glDeleteShader(fs));
 
     return program;
 }
@@ -106,7 +142,7 @@ int main(void)
         return -1;
     }
 
-    window = glfwCreateWindow(640, 480, "Open GL Test", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "Open GL Test", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -115,12 +151,14 @@ int main(void)
 
     glfwMakeContextCurrent(window);
 
+    glfwSwapInterval(1);
+
     if (glewInit() != GLEW_OK)
     {
         return -1;
     }
 
-    TheLogger->Log(helpers::StringFormater::Format("OpenGL Version: %s", (const char*)glGetString(GL_VERSION)));
+    DEBUGLOG(helpers::StringFormater::Format("OpenGL Version: %s", (const char*)glGetString(GL_VERSION)));
     
     float positions[] = {
          -0.5f, -0.5f,
@@ -135,34 +173,66 @@ int main(void)
     };
 
     unsigned int buffer;
-    glGenBuffers(1, &buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float) , positions, GL_STATIC_DRAW);
+    GLCALL(glGenBuffers(1, &buffer));
+    GLCALL(glBindBuffer(GL_ARRAY_BUFFER, buffer));
+    GLCALL(glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float) , positions, GL_STATIC_DRAW));
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 2, 0);   
+    GLCALL(glEnableVertexAttribArray(0));
+    GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 2, 0));
 
     unsigned int indexBufferObject;
-    glGenBuffers(1, &indexBufferObject);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+    GLCALL(glGenBuffers(1, &indexBufferObject));
+    GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject));
+    GLCALL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW));
 
     auto [vertexShaderSource, fragmentShaderSource] = ParseShader("res/shaders/Basic.glsl");    
     unsigned int shader = CreateShader(vertexShaderSource, fragmentShaderSource);
-    glUseProgram(shader);
+    GLCALL(glUseProgram(shader));
 
+    GLCALL(int location = glGetUniformLocation(shader, "u_Color"));
+    ASSERT(location != -1);
+    GLCALL(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
+
+    GLCALL(glUseProgram(0));
+    GLCALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+    
+
+    float redChannel = 0.0f;
+    float increment = 0.05f;
     while (!glfwWindowShouldClose(window))
     {
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        GLCALL(glClear(GL_COLOR_BUFFER_BIT));
         
-        glfwSwapBuffers(window);
+        GLCALL(glUseProgram(shader));
+        GLCALL(glUniform4f(location, redChannel, 0.3f, 0.8f, 1.0f));
 
-        glfwPollEvents();
+        GLCALL(glBindBuffer(GL_ARRAY_BUFFER, buffer));
+        GLCALL(glEnableVertexAttribArray(0));
+        GLCALL(glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(float) * 2, 0));
+
+        GLCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject));
+
+        
+        GLCALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));        
+
+        if (redChannel > 1.0f)
+        {
+            increment = -0.05f;
+        }
+        else if(redChannel < 0.0f)
+        {
+            increment = 0.05f;
+        }
+
+        redChannel += increment;
+
+        GLCALL(glfwSwapBuffers(window));
+
+        GLCALL(glfwPollEvents());
     }
 
-    glDeleteProgram(shader);
+    GLCALL(glDeleteProgram(shader));
 
     glfwTerminate();
     return 0;

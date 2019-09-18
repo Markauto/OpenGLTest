@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include "../StringFormater/StringFormater.h"
 #include <iostream>
 
 helpers::Logger::Logger(helpers::ITimeHelper* timeHelper) : TimeHelper(timeHelper)
@@ -7,5 +8,5 @@ helpers::Logger::Logger(helpers::ITimeHelper* timeHelper) : TimeHelper(timeHelpe
 
 void helpers::Logger::Log(const std::string& logMessage) const
 {
-    std::cout << TimeHelper->NowString() << ": " << logMessage << std::endl;
+    std::cout << helpers::StringFormater::Format("%s: %s", TimeHelper->NowString(), logMessage) << std::endl;
 }
