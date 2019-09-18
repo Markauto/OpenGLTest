@@ -9,8 +9,11 @@
 #include "TimeHelper/TimeHelper.h"
 #include "Logger/Logger.h"
 #include "StringFormater/StringFormater.h"
+#include "IndexBuffer.h"
+#include "Shader.h"
+#include "VertexArray.h"
 
-// TODO: Move setup into factory classes or summet
+// TODO: Move setup into factory classes or something and make not global you lazy bastard
 extern std::unique_ptr<helpers::ILogger> TheLogger;
 extern std::unique_ptr<helpers::ITimeHelper> TheTimeHelper;
 
@@ -31,5 +34,12 @@ extern std::unique_ptr<helpers::ITimeHelper> TheTimeHelper;
 void Setup();
 void GLClearError();
 bool GLLogCall(const char* function, const char* file, int line);
+
+class Renderer
+{
+public:
+    void Draw(const VertexArray& vertexArray, const IndexBuffer& indexBuffer, const Shader& shader);
+    void Clear() const;
+};
 
 #endif // OPENGLTEST_SRC_RENDERER_H_

@@ -1,10 +1,15 @@
 #pragma once
+#ifndef OPENGLTEST_SRC_VertexArray_h__
+#define OPENGLTEST_SRC_VertexArray_h__
 
 #include "VertexBuffer.h"
-#include "VertexBufferLayout.h"
+
+class VertexBufferLayout;
 
 class VertexArray
 {
+private:
+    unsigned int m_RendererId;
 public:
     VertexArray();
     ~VertexArray();
@@ -12,5 +17,7 @@ public:
     void Bind() const;
     void Unbind() const;
 private:
-    unsigned int m_RendererId;
+
 };
+
+#endif // OPENGLTEST_SRC_VertexArray_h__

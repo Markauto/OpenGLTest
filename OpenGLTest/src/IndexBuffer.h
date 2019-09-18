@@ -4,6 +4,9 @@
 
 class IndexBuffer
 {
+private:
+    unsigned int m_RendererId;
+    unsigned int m_Count;
 public:
     IndexBuffer(const unsigned int* data, unsigned int count);
     ~IndexBuffer();
@@ -15,10 +18,8 @@ public:
     {
         return m_Count;
     }
-
 private:
-    unsigned int m_RendererId;
-    unsigned int m_Count;
+
 };
 
 #endif // OPENGLTEST_SRC_INDEXBUFFER_H_

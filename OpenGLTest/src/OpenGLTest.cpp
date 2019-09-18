@@ -3,90 +3,15 @@
 #include <string>
 #include <sstream>
 
-#include "GL/glew.h"
-#include "GLFW/glfw3.h"
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #include "Renderer.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "VertexArray.h"
-
-std::tuple<std::string, std::string> ParseShader(const std::string& filepath)
-{
-    std::ifstream stream(filepath);
-
-    enum class ShaderType
-    {
-        NONE = -1, VERTEX = 0, FRAGMENT = 1
-    };
-
-    std::string line;
-    std::stringstream ss[2];
-    ShaderType type = ShaderType::NONE;
-    while (getline(stream, line))
-    {
-        if (line.find("#shader") != std::string::npos)
-        {
-            if (line.find("vertex") != std::string::npos)
-            {
-                type = ShaderType::VERTEX;
-            }
-            else if (line.find("fragment") != std::string::npos)
-            {
-                type = ShaderType::FRAGMENT;
-            }
-        }
-        else
-        {
-            ss[(int)type] << line << '\n';
-        }
-    }
-
-    return { ss[0].str(), ss[1].str() };
-}
-
-unsigned int CompileShader(unsigned int type, const std::string& source)
-{
-    GLCALL(unsigned int id = glCreateShader(type));
-    const char* src = source.c_str();
-    GLCALL(glShaderSource(id, 1, &src, nullptr));
-    GLCALL(glCompileShader(id));
-
-    int result;
-    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
-    if (result == GL_FALSE)
-    {
-        int length;
-        GLCALL(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
-        GLCALL(char* message = (char *)alloca(length * sizeof(char)));
-        GLCALL(glGetShaderInfoLog(id, length, &length, message));
-        TheLogger->Log(helpers::StringFormater::Format(
-            "Failed to compile %s shader :( \n %s", 
-            (type == GL_VERTEX_SHADER ? "vertex" : "fragment"), 
-            message));
-        GLCALL(glDeleteShader(id));
-        return 0;
-    }
-
-    return id;
-}
-
-unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
-{
-    GLCALL(unsigned int program = glCreateProgram());
-    unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-    unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
-
-    GLCALL(glAttachShader(program, vs));
-    GLCALL(glAttachShader(program, fs));
-    GLCALL(glLinkProgram(program));
-    GLCALL(glValidateProgram(program));
-
-    GLCALL(glDeleteShader(vs));
-    GLCALL(glDeleteShader(fs));
-
-    return program;
-}
+#include "Shader.h"
+#include "VertexBufferLayout.h"
 
 int main(void)
 {
@@ -135,7 +60,6 @@ int main(void)
         };
         
         VertexArray vertexArray;
-
         VertexBuffer vertexBuffer(positions, 4 * 2 * sizeof(float));
 
         VertexBufferLayout layout;
@@ -144,33 +68,27 @@ int main(void)
 
         IndexBuffer indexBuffer(indices, 6);
 
-        auto [vertexShaderSource, fragmentShaderSource] = ParseShader("res/shaders/Basic.glsl");
-        unsigned int shader = CreateShader(vertexShaderSource, fragmentShaderSource);
-        GLCALL(glUseProgram(shader));
-
-        GLCALL(int location = glGetUniformLocation(shader, "u_Color"));
-        ASSERT(location != -1);
-        GLCALL(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
+        Shader shader("res/shaders/Basic.glsl");
+        shader.Bind();
+        shader.SetUniform4f("u_Color", 0.8f, 0.3f, 0.8f, 1.0f);
 
         vertexArray.Unbind();
-        GLCALL(glUseProgram(0));
+        shader.Unbind();
         vertexBuffer.Unbind();
         indexBuffer.Unbind();
         
+        Renderer renderer;
+
         float redChannel = 0.0f;
         float increment = 0.05f;
         while (!glfwWindowShouldClose(window))
         {
-            GLCALL(glClear(GL_COLOR_BUFFER_BIT));
+            renderer.Clear();
 
-            GLCALL(glUseProgram(shader));
-            GLCALL(glUniform4f(location, redChannel, 0.3f, 0.8f, 1.0f));
+            shader.Bind();
+            shader.SetUniform4f("u_Color", redChannel, 0.3f, 0.8f, 1.0f);
 
-            vertexArray.Bind();
-
-            indexBuffer.Bind();
-
-            GLCALL(glDrawElements(GL_TRIANGLES, indexBuffer.GetCount(), GL_UNSIGNED_INT, nullptr));
+            renderer.Draw(vertexArray, indexBuffer, shader);
 
             if (redChannel > 1.0f)
             {
@@ -183,12 +101,9 @@ int main(void)
 
             redChannel += increment;
 
-            GLCALL(glfwSwapBuffers(window));
-
-            GLCALL(glfwPollEvents());
+            glfwSwapBuffers(window);
+            glfwPollEvents();
         }
-
-        GLCALL(glDeleteProgram(shader));
     }
 
     glfwTerminate();
