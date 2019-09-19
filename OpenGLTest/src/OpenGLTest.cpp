@@ -12,6 +12,7 @@
 #include "VertexArray.h"
 #include "Shader.h"
 #include "VertexBufferLayout.h"
+#include "Texture.h"
 
 int main(void)
 {
@@ -47,11 +48,12 @@ int main(void)
     DEBUGLOG(helpers::StringFormater::Format("OpenGL Version: %s", (const char*)glGetString(GL_VERSION)));
 
     {
-        float positions[] = {
-             -0.5f, -0.5f,
-              0.5f, -0.5f,
-              0.5f,  0.5f,
-             -0.5f,  0.5f
+        //Position 2dVec,TextureCord 2dVec
+        float vertexes[] = {
+             -0.5f, -0.5f, 0.0f, 0.0f, //Bottom left
+              0.5f, -0.5f, 1.0f, 0.0f, //Right side
+              0.5f,  0.5f, 1.0f, 1.0f, //Top right
+             -0.5f,  0.5f, 0.0f, 1.0f  //Left side
         };
 
         unsigned int indices[] = {
@@ -59,11 +61,15 @@ int main(void)
             2, 3, 0
         };
         
+        GLCALL(glEnable(GL_BLEND));
+        GLCALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)); //Set Blending
+        
         VertexArray vertexArray;
-        VertexBuffer vertexBuffer(positions, 4 * 2 * sizeof(float));
+        VertexBuffer vertexBuffer(vertexes, 4 * 4 * sizeof(float));
 
         VertexBufferLayout layout;
-        layout.Push<float>(2);  
+        layout.Push<float>(2); //Push position 
+        layout.Push<float>(2); //Push texture cords
         vertexArray.AddBuffer(vertexBuffer, layout);
 
         IndexBuffer indexBuffer(indices, 6);
@@ -71,6 +77,10 @@ int main(void)
         Shader shader("res/shaders/Basic.glsl");
         shader.Bind();
         shader.SetUniform4f("u_Color", 0.8f, 0.3f, 0.8f, 1.0f);
+
+        Texture texture("res/textures/face.png");
+        texture.Bind(0);
+        shader.SetUniform1i("u_Texture", 0);
 
         vertexArray.Unbind();
         shader.Unbind();

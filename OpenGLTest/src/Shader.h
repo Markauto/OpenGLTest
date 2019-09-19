@@ -21,7 +21,8 @@ public:
 
     // Set uniforms
     void SetUniform4f(const std::string& name, float value0, float value1, float value2, float value3);
-    void SetUniform1f(const std::string& name, float value0);
+    void SetUniform1f(const std::string& name, float value);
+    void SetUniform1i(const std::string& name, int value);
 private:
     int GetUniformLocation(const std::string& name);
     unsigned int CompileShader(unsigned int type, const std::string& source);
