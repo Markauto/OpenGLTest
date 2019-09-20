@@ -5,15 +5,22 @@
 #include <string>
 #include <unordered_map>
 
+namespace helpers
+{
+    class ILogger;
+}
+
+
 class Shader
 {
 private:
+    helpers::ILogger* m_Logger;
     unsigned int m_RendererId;
     std::string m_FilePath;
     std::unordered_map<std::string, int> m_UniformLocationCache;
-public:
-    Shader(const std::string& filePath);
-    
+public:  
+    Shader(helpers::ILogger* logger, const std::string& filePath);
+
     ~Shader();
 
     void Bind() const;

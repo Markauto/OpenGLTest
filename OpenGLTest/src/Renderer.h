@@ -12,10 +12,7 @@
 #include "IndexBuffer.h"
 #include "Shader.h"
 #include "VertexArray.h"
-
-// TODO: Move setup into factory classes or something and make not global you lazy bastard
-extern std::unique_ptr<helpers::ILogger> TheLogger;
-extern std::unique_ptr<helpers::ITimeHelper> TheTimeHelper;
+#include "Logger/Logger.h"
 
 #define ASSERT(x) if (!(x)) __debugbreak()
 #define GLCALL(x) GLClearError(); \
@@ -31,7 +28,6 @@ extern std::unique_ptr<helpers::ITimeHelper> TheTimeHelper;
 
 #endif// LOGGER_ENABLED
 
-void Setup();
 void GLClearError();
 bool GLLogCall(const char* function, const char* file, int line);
 

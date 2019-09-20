@@ -16,7 +16,12 @@
 
 int main(void)
 {
-    Setup();
+    std::unique_ptr<helpers::ILogger> TheLogger;
+    std::unique_ptr<helpers::ITimeHelper> TheTimeHelper;
+    ASSERT(sizeof(unsigned int) == sizeof(GLuint));
+
+    TheTimeHelper = std::make_unique<helpers::TimeHelper>();
+    TheLogger = std::make_unique<helpers::Logger>(TheTimeHelper.get());
 
     GLFWwindow* window;
 
@@ -74,9 +79,9 @@ int main(void)
 
         IndexBuffer indexBuffer(indices, 6);
 
-        Shader shader("res/shaders/Basic.glsl");
+        Shader shader(TheLogger.get(), "res/shaders/Basic.glsl");
         shader.Bind();
-        shader.SetUniform4f("u_Color", 0.8f, 0.3f, 0.8f, 1.0f);
+        shader.SetUniform4f("u_Color", 0.0f, 0.0f, 0.0f, 0.0f);
 
         Texture texture("res/textures/face.png");
         texture.Bind(0);
@@ -96,17 +101,17 @@ int main(void)
             renderer.Clear();
 
             shader.Bind();
-            shader.SetUniform4f("u_Color", redChannel, 0.3f, 0.8f, 1.0f);
+            shader.SetUniform4f("u_Color", redChannel, 0.0f, 0.0f, 0.0f);
 
             renderer.Draw(vertexArray, indexBuffer, shader);
 
             if (redChannel > 1.0f)
             {
-                increment = -0.05f;
+                increment = -0.005f;
             }
             else if (redChannel < 0.0f)
             {
-                increment = 0.05f;
+                increment = 0.005f;
             }
 
             redChannel += increment;

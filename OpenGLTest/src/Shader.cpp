@@ -1,14 +1,18 @@
 #include "Shader.h"
-#include "GL/glew.h"
-#include "Renderer.h"
+
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <sstream>
 #include <string>
 
-Shader::Shader(const std::string& filePath) :
-    m_FilePath(filePath), m_RendererId(0)
+#include "GL/glew.h"
+#include "Renderer.h"
+#include "Logger/ILogger.h"
+
+
+Shader::Shader(helpers::ILogger* logger, const std::string& filePath) :
+    m_Logger(logger), m_FilePath(filePath), m_RendererId(0)
 {
     auto [vertexShaderSource, fragmentShaderSource] = ParseShader();
     m_RendererId = CreateShader(vertexShaderSource, fragmentShaderSource);
@@ -34,7 +38,7 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
         GLCALL(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
         GLCALL(char* message = (char*)alloca(length * sizeof(char)));
         GLCALL(glGetShaderInfoLog(id, length, &length, message));
-        TheLogger->Log(helpers::StringFormater::Format(
+        m_Logger->Log(helpers::StringFormater::Format(
             "Failed to compile %s shader :( \n %s",
             (type == GL_VERTEX_SHADER ? "vertex" : "fragment"),
             message));
@@ -131,7 +135,7 @@ int Shader::GetUniformLocation(const std::string& name)
     GLCALL(int location = glGetUniformLocation(m_RendererId, name.c_str()));
     if (location == -1)
     {
-        TheLogger->Log(helpers::StringFormater::Format("Warning: uniform '%s' doesn't exist!", name));
+        m_Logger->Log(helpers::StringFormater::Format("Warning: uniform '%s' doesn't exist!", name));
     }
 
     m_UniformLocationCache[name] = location;
