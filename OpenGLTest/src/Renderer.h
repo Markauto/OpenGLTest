@@ -13,6 +13,7 @@
 #include "Shader.h"
 #include "VertexArray.h"
 #include "Logger/Logger.h"
+#include <imgui\imgui.h>
 
 #define ASSERT(x) if (!(x)) __debugbreak()
 #define GLCALL(x) GLClearError(); \
@@ -33,9 +34,16 @@ bool GLLogCall(const char* function, const char* file, int line);
 
 class Renderer
 {
+private:
+    ImVec4 m_ClearColour;
 public:
+    Renderer(const ImVec4& clearColour);
     void Draw(const VertexArray& vertexArray, const IndexBuffer& indexBuffer, const Shader& shader);
     void Clear() const;
+    inline void SetClearColour(const ImVec4& clearColour)
+    {
+        m_ClearColour = clearColour;
+    }
 };
 
 #endif // OPENGLTEST_SRC_RENDERER_H_

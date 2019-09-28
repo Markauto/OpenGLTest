@@ -5,6 +5,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "glm/glm/glm.hpp"
+
 namespace helpers
 {
     class ILogger;
@@ -28,6 +30,7 @@ public:
 
     // Set uniforms
     void SetUniform4f(const std::string& name, float value0, float value1, float value2, float value3);
+    void SetUniformMat4f(const std::string& name, const glm::mat4& matrix);
     void SetUniform1f(const std::string& name, float value);
     void SetUniform1i(const std::string& name, int value);
 private:

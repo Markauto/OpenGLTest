@@ -20,6 +20,10 @@ bool GLLogCall(const char* function, const char* file, int line)
     return noErrors;
 }
 
+Renderer::Renderer(const ImVec4& clearColour) : m_ClearColour(clearColour)
+{
+}
+
 void Renderer::Draw(const VertexArray& vertexArray, const IndexBuffer& indexBuffer, const Shader& shader)
 {
     shader.Bind();
@@ -30,5 +34,6 @@ void Renderer::Draw(const VertexArray& vertexArray, const IndexBuffer& indexBuff
 
 void Renderer::Clear() const
 {
+    GLCALL(glClearColor(m_ClearColour.x, m_ClearColour.y, m_ClearColour.z, m_ClearColour.w));
     GLCALL(glClear(GL_COLOR_BUFFER_BIT));
 }
