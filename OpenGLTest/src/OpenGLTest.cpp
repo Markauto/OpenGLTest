@@ -21,6 +21,9 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#include "tests/TestMenu.h"
+#include "tests/TestClearColour.h"
+
 int main(void)
 {
     std::unique_ptr<helpers::ILogger> TheLogger;
@@ -42,7 +45,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow(960, 540, "Open GL Test", NULL, NULL);
+    window = glfwCreateWindow(960, 540, "Open GL Test", nullptr, nullptr);
     if (!window)
     {
         glfwTerminate();
@@ -59,120 +62,57 @@ int main(void)
     }
 
     DEBUGLOG(helpers::StringFormater::Format("OpenGL Version: %s", (const char*)glGetString(GL_VERSION)));
-
-
-    //Position 2dVec,TextureCord 2dVec
-    float vertexes[] = {
-        -50.0f, -50.0f, 0.0f, 0.0f, //Bottom left
-         50.0f, -50.0f, 1.0f, 0.0f, //Right side
-         50.0f,  50.0f, 1.0f, 1.0f, //Top right
-        -50.0f,  50.0f, 0.0f, 1.0f  //Left side
-    };
-
-    unsigned int indices[] = {
-        0, 1, 2,
-        2, 3, 0
-    };
-
+    
     GLCALL(glEnable(GL_BLEND));
     GLCALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)); //Set Blending
-
-    VertexArray vertexArray;
-    VertexBuffer vertexBuffer(vertexes, 4 * 4 * sizeof(float));
-
-    VertexBufferLayout layout;
-    layout.Push<float>(2); //Push position 
-    layout.Push<float>(2); //Push texture cords
-    vertexArray.AddBuffer(vertexBuffer, layout);
-
-    IndexBuffer indexBuffer(indices, 6);
-
-    glm::mat4 projectionMatrix = glm::ortho(0.0f, 960.0f, // left edge, right edge
-        0.0f, 540.0f, // bottom edge, top edge
-        -1.0f, 1.0f); // near plane, far plane
-    glm::mat4 viewMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-
-
-    Shader shader(TheLogger.get(), "res/shaders/Basic.glsl");
-    shader.Bind();
-    shader.SetUniform4f("u_Color", 0.0f, 0.0f, 0.0f, 0.0f);
-
-    Texture texture("res/textures/face.png");
-    texture.Bind(0);
-    shader.SetUniform1i("u_Texture", 0);
-
-    vertexArray.Unbind();
-    shader.Unbind();
-    vertexBuffer.Unbind();
-    indexBuffer.Unbind();
-
-    ImVec4 clearColour = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    Renderer renderer(clearColour);
+   
+    Renderer renderer;
 
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
     
-    glm::vec3 transalationA(200.0f, 200.0f, 0);
-    glm::vec3 transalationB(400.0f, 200.0f, 0);
+    test::Test* currentTest = nullptr;
+    auto* testMenu = new test::TestMenu(currentTest, TheLogger.get());
+    currentTest = testMenu;
 
-    float redChannel = 0.0f;
-    float increment = 0.05f;
+    testMenu->RegisterTest<test::TestClearColour>("Clear Colour");
+
     while (!glfwWindowShouldClose(window))
     {
+        GLCALL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
         renderer.Clear();
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        if (currentTest)
         {
-            glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), transalationA);
-            glm::mat4 modelViewProjectionMatrix = projectionMatrix * viewMatrix * modelMatrix;
-            shader.Bind();
-            shader.SetUniform4f("u_Color", redChannel, 0.0f, 0.0f, 0.0f);
-            shader.SetUniformMat4f("u_ModelViewProjectionMatrix", modelViewProjectionMatrix);
-            renderer.Draw(vertexArray, indexBuffer, shader);
-        }
-
-        {
-            glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), transalationB);
-            glm::mat4 modelViewProjectionMatrix = projectionMatrix * viewMatrix * modelMatrix;
-
-            shader.Bind();
-            shader.SetUniform4f("u_Color", redChannel, 0.0f, 0.0f, 0.0f);
-            shader.SetUniformMat4f("u_ModelViewProjectionMatrix", modelViewProjectionMatrix);
-            renderer.Draw(vertexArray, indexBuffer, shader);
-        }
-
-        if (redChannel > 1.0f)
-        {
-            increment = -0.005f;
-        }
-        else if (redChannel < 0.0f)
-        {
-            increment = 0.005f;
-        }
-
-        redChannel += increment;
-
-        // Show debug window
-        {
-            ImGui::Begin("Debug");
-            ImGui::SliderFloat3("Translate model A", &transalationA.x, 0.0f, 960.0f);          
-            ImGui::SliderFloat3("Translate model B", &transalationB.x, 0.0f, 960.0f);          
-            ImGui::ColorEdit3("clear color", (float*)& clearColour); 
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            currentTest->OnUpdate(0);
+            currentTest->OnRender();
+            ImGui::Begin("Test");
+            if (currentTest != testMenu && ImGui::Button("<-"))
+            {
+                delete currentTest;
+                currentTest = testMenu;
+            }
+            currentTest->OnImGuiRender();
             ImGui::End();
         }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        renderer.SetClearColour(clearColour);
         glfwSwapBuffers(window);
         glfwPollEvents();
+    }
+
+    delete currentTest;
+    if (currentTest != testMenu)
+    {
+        delete testMenu;
     }
 
     ImGui_ImplOpenGL3_Shutdown();
